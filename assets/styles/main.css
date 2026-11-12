@@ -36,3 +36,5 @@ main{max-width:1660px;padding:28px 32px}header{max-width:1660px;background:white
 @media(max-width:900px){main{padding:22px 16px}.workspace,.workspace.graphlayout{grid-template-columns:1fr}.reading-panel{max-height:none}.graphbox{height:470px;max-height:65vh}.explorer-toolbar{flex-wrap:wrap}.explorer-toolbar input{width:100%}.map-stats{display:none}.canvas-meta{gap:12px}.graph-legend{gap:12px}}
 
 .explorer.graph-fullscreen{position:fixed;inset:0;z-index:1000;border-radius:0;display:flex;flex-direction:column}.graph-fullscreen #map{flex:1;min-height:0;display:flex;flex-direction:column}.graph-fullscreen .graphbox{flex:1;height:auto;max-height:none}.graph-edge{stroke-linejoin:round}.graph-lane{pointer-events:none}
+
+.graph-edge{stroke-linecap:round;stroke-linejoin:round}.graph-edge.active{stroke-width:2.5}.graph-edge.conceptual{stroke-dasharray:5 7}
