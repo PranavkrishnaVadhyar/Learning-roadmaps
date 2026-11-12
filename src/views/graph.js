@@ -1,84 +1,20 @@
-const stageColors = ['#64748b', '#5686d1', '#467f9a', '#9a72c4', '#b88738', '#568a71', '#6e64d7', '#c47955', '#b45d8c'];
-
-function neighbors(id) {
-  return [...byId[id].pre, ...nodes.filter(node => node.pre.includes(id)).map(node => node.id),
-    ...(conceptLinks ? relations.filter(edge => edge[0] === id || edge[1] === id)
-      .map(edge => edge[0] === id ? edge[1] : edge[0]) : [])];
-}
-
+const stageColors = ['#64748b','#5686d1','#467f9a','#9a72c4','#b88738','#568a71','#6e64d7','#c47955','#b45d8c'];
+function neighbors(id) { return [...byId[id].pre,...nodes.filter(n=>n.pre.includes(id)).map(n=>n.id)]; }
 function graph() {
-  let visible = matching();
-  if (expanded) visible = visible.filter(node => expanded.has(node.id));
-  if (!visible.length) return '<div class="empty">No matching topics. Clear the search or show the full map.</div>';
-  const stages = [...new Set(visible.map(node => node.stage))].sort((a, b) => a - b);
-  const positions = {};
-  const height = Math.max(420, ...stages.map(stage => visible.filter(node => node.stage === stage).length * 116 + 120));
-  const width = stages.length * 310 + 40;
-  graphSize = { width, height };
-  stages.forEach((stage, column) => {
-    visible.filter(node => node.stage === stage).forEach((node, row) => {
-      positions[node.id] = { x: 44 + column * 310, y: 100 + row * 116 };
-    });
-  });
-  const edges = visible.flatMap(node => node.pre.map(id => [id, node.id, 'prerequisite']))
-    .concat(conceptLinks ? relations : []).filter(([a, b]) => positions[a] && positions[b]);
-  const near = new Set([selected, ...neighbors(selected)]);
-  const paths = edges.map(([a, b, type]) => {
-    const p = positions[a], q = positions[b];
-    const same = p.x === q.x, forward = p.x < q.x;
-    const x1 = p.x + (same || forward ? 224 : 0);
-    const x2 = q.x + (same ? 224 : forward ? 0 : 224);
-    const bend = same ? p.x + 266 : (x1 + x2) / 2;
-    const active = a === selected || b === selected;
-    return `<path d="M${x1},${p.y + 41} C${bend},${p.y + 41} ${bend},${q.y + 41} ${x2},${q.y + 41}"
-      class="graph-edge ${active ? 'active' : ''} ${type === 'prerequisite' ? '' : 'conceptual'}"
-      ${type === 'prerequisite' ? `marker-end="url(#${active ? 'active-arrow' : 'graph-arrow'})"` : ''}/>`;
-  }).join('');
-  return `<div class="canvas-meta"><span>${visible.length} topics · ${edges.length} connections</span><span>Drag to pan · Select a topic to read</span></div>
-    <div class="graphbox" tabindex="0" aria-label="Knowledge graph canvas. Scroll to pan; topic buttons open lessons.">
-      <div class="graph-sizer" style="width:${width * zoom}px;height:${height * zoom}px">
-        <div class="graph" style="width:${width}px;height:${height}px;transform:scale(${zoom});transform-origin:top left">
-          ${stages.map((stage, col) => `<div class="graph-lane" style="left:${24 + col * 310}px;width:264px;height:${height - 40}px;--stage-color:${stageColors[stage]}">
-            <span class="lane-number">${String(stage + 1).padStart(2, '0')}</span><strong>${esc(groups[stage])}</strong></div>`).join('')}
-          <svg width="${width}" height="${height}" aria-hidden="true"><defs>
-            <marker id="graph-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#bac4d0"/></marker>
-            <marker id="active-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#6e64d7"/></marker>
-          </defs>${paths}</svg>
-          ${visible.map(node => `<button class="gnode ${node.id === selected ? 'selected' : ''} ${near.has(node.id) ? 'near' : ''}" data-node="${node.id}"
-            aria-pressed="${node.id === selected}" style="left:${positions[node.id].x}px;top:${positions[node.id].y}px;--stage-color:${stageColors[node.stage]}">
-            <small>${node.pre.length ? node.pre.length + ' prerequisites' : 'Start here'}</small><strong>${esc(node.title)}</strong><span class="node-arrow" aria-hidden="true">↗</span></button>`).join('')}
-        </div>
-      </div>
-    </div>
-    <div class="graph-legend"><span><i class="solid-key"></i>Prerequisite</span><span><i class="dashed-key"></i>Conceptual connection</span><span><i class="selected-key"></i>Selected topic</span></div>`;
+ const visible=matching().filter(n=>!expanded||expanded.has(n.id));
+ if(!visible.length)return '<p class="empty">No matching topics.</p>';
+ const depths={};
+ function depth(id){return depths[id]??(depths[id]=byId[id].pre.length?1+Math.max(...byId[id].pre.map(depth)):0);}
+ const levels=[...new Set(visible.map(n=>depth(n.id)))].sort((a,b)=>a-b),positions={};
+ const columns=Math.max(...levels.map(d=>visible.filter(n=>depth(n.id)===d).length));
+ const width=columns*280+220,height=levels.length*190+70;
+ graphSize={width,height};
+ levels.forEach((d,row)=>{const layer=visible.filter(n=>depth(n.id)===d);layer.forEach((n,col)=>positions[n.id]={x:50+(columns-layer.length)*140+col*280,y:65+row*190});});
+ const edges=visible.flatMap(n=>n.pre.map(p=>[p,n.id,'prerequisite'])).concat(conceptLinks?relations:[]).filter(([a,b])=>positions[a]&&positions[b]);
+ const paths=edges.map(([a,b,type],i)=>{const p=positions[a],q=positions[b],x=p.x+112,z=q.x+112,y=p.y+82,t=q.y,rail=width-70+(i%10)*5;
+ const d=t-y===108?`M${x},${y} V${y+50} H${z} V${t}`:`M${x},${y} V${y+24} H${rail} V${t-24} H${z} V${t}`;
+ return `<path d="${d}" class="graph-edge ${a===selected||b===selected?'active':''} ${type==='prerequisite'?'':'conceptual'}" ${type==='prerequisite'?'marker-end="url(#arrow)"':''}><title>${esc(byId[a].title)} to ${esc(byId[b].title)}: ${esc(type)}</title></path>`;}).join('');
+ return `<div class="canvas-meta">${visible.length} topics · ${levels.length} dependency levels · Top to bottom</div><div class="graphbox" tabindex="0" aria-label="Flow graph"><div style="width:${width*zoom}px;height:${height*zoom}px"><div class="graph" style="width:${width}px;height:${height}px;transform:scale(${zoom});transform-origin:top left">${levels.map((d,r)=>`<div class="graph-lane" style="left:15px;top:${r*190+15}px;width:${width-100}px;height:150px;--stage-color:#6e64d7"><small>${d===0?'Foundations':'Depth '+d}</small></div>`).join('')}<svg width="${width}" height="${height}" aria-hidden="true"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#6e64d7"/></marker></defs>${paths}</svg>${visible.map(n=>`<button class="gnode ${n.id===selected?'selected':''}" data-node="${n.id}" style="left:${positions[n.id].x}px;top:${positions[n.id].y}px;--stage-color:${stageColors[n.stage]}"><small>${esc(groups[n.stage])}</small><strong>${esc(n.title)}</strong></button>`).join('')}</div></div></div><div class="graph-legend">Solid arrows: prerequisites → topic. Dashed lines: conceptual relationships.</div>`;
 }
-
-function bindCanvas() {
-  const canvas = document.querySelector('.graphbox');
-  if (!canvas) return;
-  let drag = null;
-  canvas.addEventListener('pointerdown', event => {
-    if (event.target.closest('button') || event.button !== 0 || event.pointerType === 'touch') return;
-    drag = { x: event.clientX, y: event.clientY, left: canvas.scrollLeft, top: canvas.scrollTop };
-    canvas.setPointerCapture(event.pointerId);
-    canvas.classList.add('dragging');
-    event.preventDefault();
-  });
-  canvas.addEventListener('pointermove', event => {
-    if (!drag) return;
-    canvas.scrollLeft = drag.left - event.clientX + drag.x;
-    canvas.scrollTop = drag.top - event.clientY + drag.y;
-  });
-  const release = () => { drag = null; canvas.classList.remove('dragging'); };
-  canvas.addEventListener('pointerup', release);
-  canvas.addEventListener('pointercancel', release);
-  canvas.addEventListener('lostpointercapture', release);
-}
-
-function centerSelection() {
-  const canvas = document.querySelector('.graphbox');
-  const node = document.querySelector('.gnode.selected');
-  if (!canvas || !node) return;
-  canvas.scrollLeft = parseFloat(node.style.left) * zoom - canvas.clientWidth / 2 + 112 * zoom;
-  canvas.scrollTop = parseFloat(node.style.top) * zoom - canvas.clientHeight / 2 + 41 * zoom;
-}
+function bindCanvas(){const c=document.querySelector('.graphbox');if(!c)return;let drag=null;c.onpointerdown=e=>{if(e.target.closest('button')||e.button!==0||e.pointerType==='touch')return;drag={x:e.clientX,y:e.clientY,left:c.scrollLeft,top:c.scrollTop};c.setPointerCapture(e.pointerId);e.preventDefault();};c.onpointermove=e=>{if(drag){c.scrollLeft=drag.left+drag.x-e.clientX;c.scrollTop=drag.top+drag.y-e.clientY;}};c.onpointerup=c.onpointercancel=c.onlostpointercapture=()=>drag=null;}
+function centerSelection(){const c=document.querySelector('.graphbox'),n=document.querySelector('.gnode.selected');if(c&&n){c.scrollLeft=parseFloat(n.style.left)*zoom-c.clientWidth/2+112*zoom;c.scrollTop=parseFloat(n.style.top)*zoom-c.clientHeight/2+41*zoom;}}

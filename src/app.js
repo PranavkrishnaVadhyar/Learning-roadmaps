@@ -15,3 +15,5 @@ window.addEventListener('hashchange', () => {
   }
 });
 route();
+
+window.addEventListener('keydown', e => { if(e.key === 'Escape' && graphFullscreen){graphFullscreen=false;renderRoadmap();} });

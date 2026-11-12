@@ -20,5 +20,6 @@ function route() {
   }
   current = roadmap;
   selected = parts[2] || current.start;
+  if (parts[2]) { expanded = new Set(ancestry(selected)); query = ''; }
   renderRoadmap();
 }
